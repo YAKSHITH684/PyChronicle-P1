@@ -23,9 +23,6 @@ CREATE TABLE IF NOT EXISTS variable_traces (
 );
 """
 
-# Composite indexes: variable_name/line_number first (equality filter),
-# timestamp second (range/order) -- lets SQLite satisfy WHERE + ORDER BY
-# from the index alone without a separate sort step.
 CREATE_INDEX_VARIABLE_NAME = """
 CREATE INDEX IF NOT EXISTS idx_traces_variable_name
 ON variable_traces (variable_name, timestamp);

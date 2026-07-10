@@ -18,7 +18,7 @@ class TraceDatabase:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(str(self.db_path))
         self._conn.row_factory = sqlite3.Row
-        self._conn.execute("PRAGMA journal_mode = WAL;")   # fast concurrent writes
+        self._conn.execute("PRAGMA journal_mode = WAL;")
         self._conn.execute("PRAGMA synchronous = NORMAL;")
         self._init_schema()
 
@@ -38,7 +38,6 @@ class TraceDatabase:
         except (TypeError, ValueError):
             return repr(value)
 
-    # ---- writes -----------------------------------------------------------
     def insert_trace(self, line_number: int, variable_name: str, value: Any,
                       scope: str = "module", session_id: Optional[str] = None,
                       timestamp: Optional[float] = None) -> int:
@@ -57,7 +56,6 @@ class TraceDatabase:
             return cur.lastrowid
 
     def insert_many(self, rows: Iterable[dict]) -> None:
-        """Bulk insert. Each dict needs the same keys as insert_trace's args."""
         prepared = [{
             "timestamp": r.get("timestamp", time.time()),
             "line_number": r["line_number"],
@@ -79,7 +77,6 @@ class TraceDatabase:
                 prepared,
             )
 
-    # ---- reads --------------------------------------------------------------
     def history_for_variable(self, variable_name: str,
                               session_id: Optional[str] = None) -> List[sqlite3.Row]:
         query = "SELECT * FROM variable_traces WHERE variable_name = ?"
@@ -111,11 +108,3 @@ class TraceDatabase:
 
     def __exit__(self, exc_type, exc, tb):
         self.close()
-
-
-if __name__ == "__main__":
-    with TraceDatabase("Data/traces.db") as db:
-        rid = db.insert_trace(line_number=12, variable_name="x", value=42, scope="module")
-        print("Inserted row id:", rid)
-        for row in db.history_for_variable("x"):
-            print(dict(row))

@@ -1,8 +1,8 @@
-"""
+r"""
 Demo: parse sample_target.py with the AST engine, then persist every
 assignment found into the SQLite trace store.
 
-Run with:  python -m Sample_scripts.demo   (from the pychronicle/ root)
+Run with:  python Sample_scripts\demo.py   (from the PyChronicle P1 root)
 """
 
 import sys
@@ -10,8 +10,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from ast_engine.parser import parse_file
-from storage.database import TraceDatabase
+from pychronicle.ast_engine.parser import parse_file
+from pychronicle.storage.database import TraceDatabase
 
 TARGET_FILE = Path(__file__).parent / "sample_target.py"
 DB_PATH = Path(__file__).resolve().parent.parent / "Data" / "traces.db"
