@@ -8,5 +8,4 @@ def compute(a, b):
 
 class Config:
     debug = True
-    x: int = 1
-    y: int = 2
+    x, y = 1, 2
