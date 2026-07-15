@@ -5,47 +5,48 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PyChronicle — Time-Travel Debugger</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #0A0A12;
-  --sidebar-bg: #0D0D16;
-  --panel: #14141F;
-  --panel-alt: #101018;
-  --border: #22222F;
-  --border-bright: #33334A;
-  --text: #F1F1F8;
-  --text-dim: #8B8BA7;
-  --purple: #7C5CFC;
-  --purple-bright: #9B7FFF;
-  --purple-dim: #3A2E70;
-  --purple-glow: rgba(124, 92, 252, 0.35);
+  --bg: #0A130F;
+  --sidebar-bg: #0B140F;
+  --panel: #101C16;
+  --panel-alt: #0D1712;
+  --border: #1E2E27;
+  --border-bright: #2C4238;
+  --text: #EAF5F1;
+  --text-dim: #7FA396;
+  --purple: #1FAE85;
+  --purple-bright: #2DD9A8;
+  --purple-dim: #123B2E;
+  --purple-glow: rgba(31, 174, 133, 0.35);
   --success: #34D399;
-  --danger: #F0577A;
+  --danger: #E0654C;
   --amber: #F2A65A;
-  --teal: #2DD4BF;
-  --radius: 10px;
-  --display-font: 'Space Grotesk', sans-serif;
+  --teal: #3D8BE0;
+  --radius: 14px;
+  --display-font: 'Fraunces', Georgia, serif;
+  --body-font: 'Inter', -apple-system, sans-serif;
   --mono-font: 'JetBrains Mono', monospace;
 }
 
 body[data-theme="light"] {
-  --bg: #F6F5FB;
+  --bg: #F4FAF8;
   --sidebar-bg: #FFFFFF;
   --panel: #FFFFFF;
-  --panel-alt: #F1EFFA;
-  --border: #E3E1F0;
-  --border-bright: #CFCBE8;
-  --text: #211F33;
-  --text-dim: #6E6B87;
-  --purple: #6D45F5;
-  --purple-bright: #8465FF;
-  --purple-dim: #E7E1FC;
-  --purple-glow: rgba(109, 69, 245, 0.18);
+  --panel-alt: #EAF5F1;
+  --border: rgba(15, 42, 36, 0.09);
+  --border-bright: rgba(15, 42, 36, 0.16);
+  --text: #122A24;
+  --text-dim: #52746B;
+  --purple: #1FAE85;
+  --purple-bright: #0E8A66;
+  --purple-dim: rgba(31, 174, 133, 0.13);
+  --purple-glow: rgba(31, 174, 133, 0.18);
   --success: #059669;
-  --danger: #DC2A5E;
+  --danger: #C6503A;
   --amber: #B45309;
-  --teal: #0D9488;
+  --teal: #2569B4;
 }
 
 * { box-sizing: border-box; }
@@ -54,7 +55,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: var(--mono-font);
+  font-family: var(--body-font);
   font-size: 13.5px;
   line-height: 1.5;
   transition: background 0.25s, color 0.25s;
@@ -513,7 +514,7 @@ const state = {
   playTimer: null,
 };
 
-const PALETTE = ['#7C5CFC', '#2DD4BF', '#F2A65A', '#F0577A', '#60A5FA', '#34D399'];
+const PALETTE = ['#1FAE85', '#3D8BE0', '#F2A65A', '#E0654C', '#2DD9A8', '#34D399'];
 
 function colorFor(name) {
   let h = 0;

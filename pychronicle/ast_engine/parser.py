@@ -19,9 +19,9 @@ class VariableAssignment:
     name: str
     line_number: int
     col_offset: int
-    value_expr: str            # source text of the right-hand side
+    value_expr: str
     annotation: Optional[str] = None
-    scope: str = "module"      # "module", or the enclosing function/class name
+    scope: str = "module"
     is_augmented: bool = False
 
 
@@ -32,7 +32,8 @@ class AssignmentVisitor(ast.NodeVisitor):
         self.assignments: List[VariableAssignment] = []
         self._scope_stack: List[str] = ["module"]
 
-    # ---- scope tracking -------------------------------------------------
+    # ---------------- Scope Tracking ---------------- #
+
     def visit_FunctionDef(self, node: ast.FunctionDef):
         self._scope_stack.append(node.name)
         self.generic_visit(node)
@@ -45,55 +46,94 @@ class AssignmentVisitor(ast.NodeVisitor):
         self.generic_visit(node)
         self._scope_stack.pop()
 
-    # ---- assignment handling ---------------------------------------------
+    # ---------------- Assignment Handling ---------------- #
+
     def visit_Assign(self, node: ast.Assign):
         value_expr = self._unparse(node.value)
         for target in node.targets:
-            self._record_target(target, node.lineno, node.col_offset, value_expr)
+            self._record_target(
+                target,
+                node.lineno,
+                node.col_offset,
+                value_expr,
+            )
         self.generic_visit(node)
 
     def visit_AnnAssign(self, node: ast.AnnAssign):
         value_expr = self._unparse(node.value) if node.value else ""
         annotation = self._unparse(node.annotation)
-        self._record_target(node.target, node.lineno, node.col_offset,
-                             value_expr, annotation=annotation)
+
+        self._record_target(
+            node.target,
+            node.lineno,
+            node.col_offset,
+            value_expr,
+            annotation=annotation,
+        )
+
         self.generic_visit(node)
 
     def visit_AugAssign(self, node: ast.AugAssign):
         value_expr = self._unparse(node.value)
-        self._record_target(node.target, node.lineno, node.col_offset,
-                             value_expr, is_augmented=True)
+
+        self._record_target(
+            node.target,
+            node.lineno,
+            node.col_offset,
+            value_expr,
+            is_augmented=True,
+        )
+
         self.generic_visit(node)
 
-    # ---- helpers ----------------------------------------------------------
-    def _record_target(self, target, lineno, col_offset, value_expr,
-                        annotation=None, is_augmented=False):
+    # ---------------- Helper Methods ---------------- #
+
+    def _record_target(
+        self,
+        target,
+        lineno,
+        col_offset,
+        value_expr,
+        annotation=None,
+        is_augmented=False,
+    ):
         if isinstance(target, ast.Name):
             name = target.id
+
         elif isinstance(target, (ast.Attribute, ast.Subscript)):
             name = self._unparse(target)
+
         elif isinstance(target, (ast.Tuple, ast.List)):
             for elt in target.elts:
-                self._record_target(elt, lineno, col_offset, value_expr,
-                                     is_augmented=is_augmented)
+                self._record_target(
+                    elt,
+                    lineno,
+                    col_offset,
+                    value_expr,
+                    is_augmented=is_augmented,
+                )
             return
+
         else:
             return
 
-        self.assignments.append(VariableAssignment(
-            name=name,
-            line_number=lineno,
-            col_offset=col_offset,
-            value_expr=value_expr,
-            annotation=annotation,
-            scope=self._scope_stack[-1],
-            is_augmented=is_augmented,
-        ))
+        self.assignments.append(
+            VariableAssignment(
+                name=name,
+                line_number=lineno,
+                col_offset=col_offset,
+                value_expr=value_expr,
+                annotation=annotation,
+                scope=self._scope_stack[-1],
+                is_augmented=is_augmented,
+            )
+        )
 
     @staticmethod
     def _unparse(node) -> str:
         if node is None:
             return ""
+
         try:
             return ast.unparse(node)
         except Exception:
@@ -101,17 +141,22 @@ class AssignmentVisitor(ast.NodeVisitor):
 
 
 def parse_file(path: Union[str, Path]) -> List[VariableAssignment]:
-    """Parse the Python file at `path` and return all assignments found."""
+    """Parse a Python file and return all assignments."""
     path = Path(path)
     source = path.read_text(encoding="utf-8")
     return parse_source(source, filename=str(path))
 
 
-def parse_source(source: str, filename: str = "<string>") -> List[VariableAssignment]:
-    """Parse a raw source string and return all assignments found."""
+def parse_source(
+    source: str,
+    filename: str = "<string>",
+) -> List[VariableAssignment]:
+    """Parse raw source code and return all assignments."""
     tree = ast.parse(source, filename=filename)
+
     visitor = AssignmentVisitor()
     visitor.visit(tree)
+
     return visitor.assignments
 
 
@@ -122,7 +167,20 @@ if __name__ == "__main__":
         print("Usage: python parser.py <target_file.py>")
         sys.exit(1)
 
-    for a in parse_file(sys.argv[1]):
-        ann = f"  # {a.annotation}" if a.annotation else ""
-        op = "+=" if a.is_augmented else "="
-        print(f"L{a.line_number:<5} [{a.scope}] {a.name} {op} {a.value_expr}{ann}")
+    for assignment in parse_file(sys.argv[1]):
+        annotation = (
+            f"  # {assignment.annotation}"
+            if assignment.annotation
+            else ""
+        )
+
+        operator = "+=" if assignment.is_augmented else "="
+
+        print(
+            f"L{assignment.line_number:<5} "
+            f"[{assignment.scope}] "
+            f"{assignment.name} "
+            f"{operator} "
+            f"{assignment.value_expr}"
+            f"{annotation}"
+        )

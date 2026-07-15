@@ -1,54 +1,34 @@
 """
-SQLite schema for PyChronicle's variable-trace storage.
-
-Table `variable_traces` stores one row per observed assignment:
-(timestamp, line_number, variable_name, serialized_value), plus a
-few extra columns that make the two dominant queries fast:
-  1. "show the history of variable X over time"
-  2. "show everything that happened at/around line N"
+Database schema definitions.
 """
 
-SCHEMA_VERSION = 1
+SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS execution_history (
 
-CREATE_TRACES_TABLE = """
-CREATE TABLE IF NOT EXISTS variable_traces (
-    id                INTEGER PRIMARY KEY AUTOINCREMENT,
-    timestamp         REAL    NOT NULL,
-    line_number       INTEGER NOT NULL,
-    variable_name     TEXT    NOT NULL,
-    serialized_value  TEXT    NOT NULL,
-    scope             TEXT    DEFAULT 'module',
-    value_type        TEXT,
-    session_id        TEXT
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    variable_name TEXT NOT NULL,
+
+    variable_value TEXT,
+
+    variable_type TEXT,
+
+    line_number INTEGER,
+
+    timestamp TEXT,
+
+    scope TEXT
 );
 """
 
-CREATE_INDEX_VARIABLE_NAME = """
-CREATE INDEX IF NOT EXISTS idx_traces_variable_name
-ON variable_traces (variable_name, timestamp);
-"""
 
-CREATE_INDEX_LINE_NUMBER = """
-CREATE INDEX IF NOT EXISTS idx_traces_line_number
-ON variable_traces (line_number, timestamp);
-"""
+def create_schema(connection):
+    """
+    Create required database tables.
+    """
 
-CREATE_INDEX_SESSION = """
-CREATE INDEX IF NOT EXISTS idx_traces_session
-ON variable_traces (session_id, timestamp);
-"""
+    cursor = connection.cursor()
 
-CREATE_META_TABLE = """
-CREATE TABLE IF NOT EXISTS trace_meta (
-    key   TEXT PRIMARY KEY,
-    value TEXT
-);
-"""
+    cursor.executescript(SCHEMA_SQL)
 
-ALL_STATEMENTS = [
-    CREATE_TRACES_TABLE,
-    CREATE_INDEX_VARIABLE_NAME,
-    CREATE_INDEX_LINE_NUMBER,
-    CREATE_INDEX_SESSION,
-    CREATE_META_TABLE,
-]
+    connection.commit()
