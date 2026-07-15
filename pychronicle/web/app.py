@@ -1,74 +1,150 @@
 """
-Flask app for the PyChronicle dashboard.
-
-Reads directly from the SQLite database written by
-storage.database.TraceDatabase — no write access, no dependency on
-that class at runtime, so the dashboard stays decoupled from the
-tracer itself.
-
-Run with:
-    python -m web.app
-Then open http://127.0.0.1:5000
+Flask Web Application for PyChronicle
 """
 
-import sqlite3
-from pathlib import Path
+from flask import Flask, jsonify, render_template_string
 
-from flask import Flask, jsonify, render_template
+from storage.database import TraceDatabase
 
 app = Flask(__name__)
 
-# Data/traces.db, relative to the project root (one level up from this file).
-DB_PATH = Path(__file__).resolve().parent.parent / "Data" / "traces.db"
+db = TraceDatabase()
 
 
-def get_connection() -> sqlite3.Connection:
-    conn = sqlite3.connect(str(DB_PATH))
-    conn.row_factory = sqlite3.Row
-    return conn
+HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>PyChronicle</title>
+
+<style>
+
+body{
+    font-family:Arial;
+    background:#f3f5f8;
+    margin:40px;
+}
+
+h1{
+    color:#0f172a;
+}
+
+table{
+
+    width:100%;
+    border-collapse:collapse;
+    background:white;
+
+}
+
+th{
+
+    background:#2563eb;
+    color:white;
+    padding:10px;
+
+}
+
+td{
+
+    border:1px solid #ddd;
+    padding:10px;
+    text-align:center;
+
+}
+
+tr:nth-child(even){
+
+    background:#f9fafb;
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>PyChronicle Execution History</h1>
+
+<table>
+
+<tr>
+
+<th>ID</th>
+<th>Variable</th>
+<th>Value</th>
+<th>Type</th>
+<th>Line</th>
+<th>Scope</th>
+<th>Timestamp</th>
+
+</tr>
+
+{% for row in rows %}
+
+<tr>
+
+<td>{{row.id}}</td>
+<td>{{row.variable_name}}</td>
+<td>{{row.variable_value}}</td>
+<td>{{row.variable_type}}</td>
+<td>{{row.line_number}}</td>
+<td>{{row.scope}}</td>
+<td>{{row.timestamp}}</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+</body>
+</html>
+"""
 
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+
+    rows = db.get_history()
+
+    return render_template_string(
+        HTML,
+        rows=rows
+    )
 
 
-@app.route("/api/traces")
-def api_traces():
-    """Every recorded assignment, oldest first — the raw timeline."""
-    if not DB_PATH.exists():
-        return jsonify([])
+@app.route("/api/history")
+def api_history():
 
-    conn = get_connection()
-    try:
-        rows = conn.execute(
-            """
-            SELECT id, timestamp, line_number, variable_name,
-                   serialized_value, scope, value_type, session_id
-            FROM variable_traces
-            ORDER BY timestamp ASC, id ASC
-            """
-        ).fetchall()
-        return jsonify([dict(row) for row in rows])
-    finally:
-        conn.close()
+    return jsonify(
+        db.get_history()
+    )
 
 
-@app.route("/api/variables")
-def api_variables():
-    """Distinct variable names, for the track list in the sidebar."""
-    if not DB_PATH.exists():
-        return jsonify([])
+@app.route("/api/history/<variable>")
+def api_variable(variable):
 
-    conn = get_connection()
-    try:
-        rows = conn.execute(
-            "SELECT DISTINCT variable_name FROM variable_traces ORDER BY variable_name"
-        ).fetchall()
-        return jsonify([row["variable_name"] for row in rows])
-    finally:
-        conn.close()
+    return jsonify(
+        db.get_history(variable)
+    )
+
+
+@app.route("/health")
+def health():
+
+    return {
+        "status": "running",
+        "project": "PyChronicle"
+    }
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+
+    app.run(
+        host="0.0.0.0",
+        port=5000,
+        debug=True
+    )

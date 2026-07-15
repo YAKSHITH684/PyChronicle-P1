@@ -1,11 +1,38 @@
-count: int = 0
-name = "pychronicle"
+"""
+Target script used for AST parsing and rewriting.
+"""
 
-def compute(a, b):
-    total = a + b
-    total += 1
-    return total
+name = "PyChronicle"
 
-class Config:
-    debug = True
-    x, y = 1, 2
+version = 1.0
+
+count = 5
+
+price = 199.99
+
+active = True
+
+numbers = [1, 2, 3]
+
+student = {
+    "name": "Alice",
+    "marks": 90
+}
+
+count += 10
+
+numbers.append(4)
+
+student["marks"] = 95
+
+x, y = (100, 200)
+
+total = x + y
+
+for i in range(3):
+
+    total += i
+
+print(name)
+print(version)
+print(total)

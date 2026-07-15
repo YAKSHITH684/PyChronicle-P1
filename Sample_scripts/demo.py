@@ -1,41 +1,76 @@
-r"""
-Demo: parse sample_target.py with the AST engine, then persist every
-assignment found into the SQLite trace store.
+"""
+Demo script for PyChronicle
 
-Run with:  python Sample_scripts\demo.py   (from the PyChronicle P1 root)
+Run this file after enabling the AST rewriter
+to generate execution history.
 """
 
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from pychronicle.ast_engine.parser import parse_file
-from pychronicle.storage.database import TraceDatabase
-
-TARGET_FILE = Path(__file__).parent / "sample_target.py"
-DB_PATH = Path(__file__).resolve().parent.parent / "Data" / "traces.db"
+from tracer.execution_tracer import ExecutionTracer
 
 
-def main():
-    assignments = parse_file(TARGET_FILE)
-    print(f"Found {len(assignments)} assignment(s) in {TARGET_FILE.name}:\n")
-
-    with TraceDatabase(DB_PATH) as db:
-        for a in assignments:
-            print(f"  L{a.line_number:<3} [{a.scope:<10}] {a.name} = {a.value_expr}")
-            db.insert_trace(
-                line_number=a.line_number,
-                variable_name=a.name,
-                value=a.value_expr,   # storing the source expression as the "value"
-                scope=a.scope,
-                session_id="demo-run",
-            )
-
-        print("\nStored history for 'total':")
-        for row in db.history_for_variable("total"):
-            print(f"  {dict(row)}")
+tracer = ExecutionTracer()
 
 
-if __name__ == "__main__":
-    main()
+x = 10
+tracer.trace("x", x, 1)
+
+y = 25
+tracer.trace("y", y, 2)
+
+z = x + y
+tracer.trace("z", z, 3)
+
+x = x + 5
+tracer.trace("x", x, 4)
+
+y *= 2
+tracer.trace("y", y, 5)
+
+average = (x + y + z) / 3
+tracer.trace("average", average, 6)
+
+
+numbers = [1, 2, 3]
+
+tracer.trace("numbers", numbers, 7)
+
+numbers.append(4)
+
+tracer.trace("numbers", numbers, 8)
+
+
+student = {
+    "name": "Alice",
+    "marks": 92
+}
+
+tracer.trace(
+    "student",
+    student,
+    9
+)
+
+student["marks"] = 95
+
+tracer.trace(
+    "student",
+    student,
+    10
+)
+
+
+print("\nExecution History\n")
+
+for row in tracer.history():
+
+    print(row)
+
+
+print("\nDelta History\n")
+
+for row in tracer.delta_history():
+
+    print(row)
+
+
+tracer.close()

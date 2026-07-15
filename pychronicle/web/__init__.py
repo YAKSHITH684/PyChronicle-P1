@@ -1,10 +1,10 @@
 """
-web — PyChronicle's dashboard.
+PyChronicle Web Package
 
-A small Flask app that reads the variable_traces table (written by
-storage.database.TraceDatabase) and serves a single-page dashboard
-for scrubbing through a run's history.
-
-Run with:
-    python -m web.app
+Provides the Flask web application for visualizing
+execution history stored in the SQLite database.
 """
+
+from .app import app
+
+__all__ = ["app"]
