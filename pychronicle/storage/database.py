@@ -18,7 +18,9 @@ class TraceDatabase:
 
         self.db_path = Path(db_path)
 
-        self.connection = sqlite3.connect(self.db_path)
+        self.connection = sqlite3.connect(
+            self.db_path, check_same_thread=False
+        )
 
         self.connection.row_factory = sqlite3.Row
 

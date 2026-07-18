@@ -5,7 +5,7 @@ Run this file after enabling the AST rewriter
 to generate execution history.
 """
 
-from tracer.execution_tracer import ExecutionTracer
+from pychronicle.tracer.execution_tracer import ExecutionTracer
 
 
 tracer = ExecutionTracer()

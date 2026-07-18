@@ -1,5 +1,2 @@
-flask
-sqlalchemy
-astor
-networkx
-graphviz
+fastapi
+uvicorn
