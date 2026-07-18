@@ -5,16 +5,17 @@ Run using:
 
 python -m pychronicle
 
-or
-
 python -m pychronicle parse sample.py
 
-or
+python -m pychronicle rewrite input.py output.py
+
+python -m pychronicle demo
 
 python -m pychronicle web
 """
 
 import argparse
+import uvicorn
 
 from pychronicle.ast_engine.parser import parse_file
 from pychronicle.ast_engine.rewriter import rewrite_file
@@ -62,19 +63,19 @@ def rewrite_command(input_file, output_file):
     rewrite_file(input_file, output_file)
 
     print("\nFile rewritten successfully.")
-
     print(f"Output: {output_file}")
 
 
 def start_web():
-    """Start Flask Dashboard."""
+    """Start FastAPI Dashboard."""
 
-    from pychronicle.web.app import app
+    print("\nStarting PyChronicle FastAPI Server...\n")
 
-    app.run(
+    uvicorn.run(
+        "pychronicle.web.app:app",
         host="127.0.0.1",
-        port=5000,
-        debug=True,
+        port=8000,
+        reload=True,
     )
 
 
@@ -104,12 +105,12 @@ def main():
 
     sub.add_parser(
         "demo",
-        help="Run demo program"
+        help="Run tracing demo"
     )
 
     sub.add_parser(
         "web",
-        help="Start web dashboard"
+        help="Start FastAPI dashboard"
     )
 
     args = parser.parse_args()
