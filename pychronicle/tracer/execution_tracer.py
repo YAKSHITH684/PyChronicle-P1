@@ -7,8 +7,8 @@ it into the SQLite database.
 
 import inspect
 
-from storage.database import TraceDatabase
-from tracer.delta_tracker import DeltaTracker
+from pychronicle.storage.database import TraceDatabase
+from pychronicle.tracer.delta_tracker import DeltaTracker
 
 
 class ExecutionTracer:
@@ -19,7 +19,6 @@ class ExecutionTracer:
     def __init__(self, db_path="pychronicle.db"):
 
         self.database = TraceDatabase(db_path)
-
         self.delta = DeltaTracker()
 
     # ----------------------------------------------------
@@ -66,7 +65,6 @@ class ExecutionTracer:
         frame = inspect.currentframe().f_back
 
         line = frame.f_lineno
-
         scope = frame.f_code.co_name
 
         for name, value in frame.f_locals.items():
@@ -101,7 +99,6 @@ class ExecutionTracer:
     def clear(self):
 
         self.database.clear()
-
         self.delta.clear()
 
     # ----------------------------------------------------
@@ -147,16 +144,12 @@ if __name__ == "__main__":
     y = 50
     tracer.trace("y", y, 3)
 
-    print()
-
-    print("Database History")
+    print("\nDatabase History")
 
     for row in tracer.history():
         print(row)
 
-    print()
-
-    print("Delta History")
+    print("\nDelta History")
 
     for row in tracer.delta_history():
         print(row)
