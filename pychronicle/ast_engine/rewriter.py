@@ -14,8 +14,11 @@ x = 10
 becomes
 
 x = 10
-__pychronicle_trace__("x", x, 1)
+__pychronicle_trace__("x", x, 1, "module")
 
+Trace calls also carry the enclosing scope (the nearest function or
+class name, or "module" at the top level) so that variables assigned
+inside functions aren't misreported as module-level.
 """
 
 import ast
@@ -27,8 +30,35 @@ TRACE_FUNCTION = "__pychronicle_trace__"
 
 class AssignmentRewriter(ast.NodeTransformer):
     """
-    Inserts tracing calls after assignments.
+    Inserts tracing calls after assignments, tagging each with the
+    enclosing scope (module / function name / class name).
     """
+
+    def __init__(self):
+        super().__init__()
+        self._scope_stack = ["module"]
+
+    @property
+    def _current_scope(self) -> str:
+        return self._scope_stack[-1]
+
+    def visit_FunctionDef(self, node: ast.FunctionDef):
+        self._scope_stack.append(node.name)
+        self.generic_visit(node)
+        self._scope_stack.pop()
+        return node
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
+        self._scope_stack.append(node.name)
+        self.generic_visit(node)
+        self._scope_stack.pop()
+        return node
+
+    def visit_ClassDef(self, node: ast.ClassDef):
+        self._scope_stack.append(node.name)
+        self.generic_visit(node)
+        self._scope_stack.pop()
+        return node
 
     def visit_Assign(self, node: ast.Assign):
         self.generic_visit(node)
@@ -82,6 +112,7 @@ class AssignmentRewriter(ast.NodeTransformer):
                             ctx=ast.Load(),
                         ),
                         ast.Constant(lineno),
+                        ast.Constant(self._current_scope),
                     ],
                     keywords=[],
                 )

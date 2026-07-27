@@ -1,157 +1,49 @@
 """
-execution_tracer.py
+executor.py
 
-Records variable execution history and stores
-it into the SQLite database.
+Ties the AST rewriter to real execution: given a path to a Python
+file, rewrite it to insert trace calls, then execute it in a fresh
+namespace with __pychronicle_trace__ wired up to write straight into
+the TraceDatabase under a brand-new session.
 """
 
-import inspect
+import os
 
+from pychronicle.ast_engine.rewriter import rewrite_source
 from pychronicle.storage.database import TraceDatabase
-from pychronicle.tracer.delta_tracker import DeltaTracker
 
 
-class ExecutionTracer:
+def run_and_trace(path: str, db: TraceDatabase) -> dict:
     """
-    Main execution tracer.
-    """
+    Rewrite + execute the file at `path`, recording every traced
+    assignment into `db` under a new session.
 
-    def __init__(self, db_path="pychronicle.db"):
-
-        self.database = TraceDatabase(db_path)
-        self.delta = DeltaTracker()
-
-    # ----------------------------------------------------
-
-    def trace(
-        self,
-        variable_name,
-        value,
-        line_number,
-        scope="global",
-    ):
-        """
-        Record one variable assignment.
-        """
-
-        change = self.delta.update(
-            variable_name,
-            value,
-        )
-
-        self.database.insert_variable(
-            variable_name,
-            value,
-            line_number,
-            scope,
-        )
-
-        print(
-            f"[TRACE] "
-            f"{variable_name} = {value} "
-            f"(Line {line_number})"
-        )
-
-        return change
-
-    # ----------------------------------------------------
-
-    def trace_locals(self):
-        """
-        Automatically trace all local variables
-        from the caller frame.
-        """
-
-        frame = inspect.currentframe().f_back
-
-        line = frame.f_lineno
-        scope = frame.f_code.co_name
-
-        for name, value in frame.f_locals.items():
-
-            self.trace(
-                name,
-                value,
-                line,
-                scope,
-            )
-
-    # ----------------------------------------------------
-
-    def history(self):
-        """
-        Return database history.
-        """
-
-        return self.database.get_history()
-
-    # ----------------------------------------------------
-
-    def delta_history(self):
-        """
-        Return change history.
-        """
-
-        return self.delta.get_history()
-
-    # ----------------------------------------------------
-
-    def clear(self):
-
-        self.database.clear()
-        self.delta.clear()
-
-    # ----------------------------------------------------
-
-    def close(self):
-
-        self.database.close()
-
-
-# ----------------------------------------------------------
-
-_global_tracer = ExecutionTracer()
-
-
-def __pychronicle_trace__(
-    variable_name,
-    value,
-    line_number,
-):
-    """
-    Function injected by AST Rewriter.
+    Returns {"session": <session_id>, "assignments_found": <count>}.
     """
 
-    _global_tracer.trace(
-        variable_name,
-        value,
-        line_number,
-    )
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"No such file: {path}")
 
+    with open(path, "r", encoding="utf-8") as f:
+        source = f.read()
 
-# ----------------------------------------------------------
+    rewritten = rewrite_source(source)
 
-if __name__ == "__main__":
+    session = db.create_session(source_path=path)
+    count = 0
 
-    tracer = ExecutionTracer()
+    def _trace(name, value, lineno, scope):
+        nonlocal count
+        db.add_trace(session, name, value, lineno, scope)
+        count += 1
 
-    x = 10
-    tracer.trace("x", x, 1)
+    exec_globals = {
+        "__name__": "__main__",
+        "__file__": path,
+        "__pychronicle_trace__": _trace,
+    }
 
-    x = 20
-    tracer.trace("x", x, 2)
+    code = compile(rewritten, filename=path, mode="exec")
+    exec(code, exec_globals)
 
-    y = 50
-    tracer.trace("y", y, 3)
-
-    print("\nDatabase History")
-
-    for row in tracer.history():
-        print(row)
-
-    print("\nDelta History")
-
-    for row in tracer.delta_history():
-        print(row)
-
-    tracer.close()
+    return {"session": session, "assignments_found": count}

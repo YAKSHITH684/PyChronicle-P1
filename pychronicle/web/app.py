@@ -1,12 +1,12 @@
 import os
-import tempfile
 
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
 
 from pychronicle.storage.database import TraceDatabase
-from pychronicle.ast_engine.parser import parse_file
+from pychronicle.ast_engine.executor import run_and_trace
 
 app = FastAPI(title="PyChronicle")
 
@@ -21,11 +21,6 @@ app.add_middleware(
 db = TraceDatabase()
 
 
-@app.get("/")
-def home():
-    return {"message": "PyChronicle API Running"}
-
-
 @app.get("/health")
 def health():
     return {
@@ -35,55 +30,47 @@ def health():
 
 
 # -------------------------
-# PARSE PYTHON FILE
+# PARSE (execute + trace) A PYTHON FILE
 # -------------------------
+
+class ParseRequest(BaseModel):
+    path: str
+
 
 @app.post("/api/parse")
-async def parse_python_file(file: UploadFile = File(...)):
+async def parse_python_file(body: ParseRequest):
     """
-    Upload a Python file and parse it.
+    Execute the Python file at `path` with tracing instrumentation
+    inserted, recording every variable assignment into a new session.
     """
-
-    suffix = os.path.splitext(file.filename)[1]
-
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp:
-        temp.write(await file.read())
-        temp_path = temp.name
 
     try:
-        assignments = parse_file(temp_path)
+        result = run_and_trace(body.path, db)
 
-        return {
-            "success": True,
-            "filename": file.filename,
-            "assignments": assignments
-        }
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    except SyntaxError as e:
+        raise HTTPException(status_code=400, detail=f"Syntax error in target file: {e}")
 
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-        return {
-            "success": False,
-            "error": str(e)
-        }
-
-    finally:
-
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
+    return result
 
 
 # -------------------------
-# HISTORY
+# HISTORY (legacy / raw access)
 # -------------------------
 
 @app.get("/api/history")
-def history():
-    return db.get_history()
+def history(session: str = None):
+    return db.get_history(session=session)
 
 
 @app.get("/api/history/{variable}")
-def variable(variable: str):
-    return db.get_history(variable)
+def variable_history(variable: str, session: str = None):
+    return db.get_history(session=session, variable=variable)
 
 
 # -------------------------
@@ -92,13 +79,8 @@ def variable(variable: str):
 
 @app.get("/api/sessions")
 def sessions():
-
-    history = db.get_history()
-
-    return {
-        "total_sessions": len(history),
-        "history": history
-    }
+    """Plain array of session-id strings, oldest first."""
+    return db.get_sessions()
 
 
 # -------------------------
@@ -106,9 +88,27 @@ def sessions():
 # -------------------------
 
 @app.get("/api/timeline")
-def timeline():
+def timeline(session: str = None):
+    """
+    Array of trace rows for the given session (or all sessions if
+    omitted), shaped for the frontend's scrubber/snapshot views.
+    """
 
-    return db.get_history()
+    rows = db.get_history(session=session)
+
+    return [
+        {
+            "id": row.id,
+            "session": row.session,
+            "variable_name": row.variable_name,
+            "value_type": row.variable_type,
+            "serialized_value": row.serialized_value,
+            "line_number": row.line_number,
+            "scope": row.scope,
+            "timestamp": row.timestamp,
+        }
+        for row in rows
+    ]
 
 
 # -------------------------
@@ -116,32 +116,9 @@ def timeline():
 # -------------------------
 
 @app.get("/api/variables")
-def variables():
-
-    history = db.get_history()
-
-    data = []
-
-    seen = set()
-
-    for row in history:
-
-        name = row.variable_name
-
-        if name not in seen:
-
-            seen.add(name)
-
-            data.append({
-                "variable": row.variable_name,
-                "value": row.variable_value,
-                "type": row.variable_type,
-                "line": row.line_number,
-                "scope": row.scope,
-                "timestamp": row.timestamp
-            })
-
-    return data
+def variables(session: str = None):
+    """Plain array of distinct variable-name strings for the session."""
+    return db.get_variables(session=session)
 
 
 # -------------------------
@@ -205,6 +182,7 @@ def dashboard():
 
     <tr>
         <th>ID</th>
+        <th>Session</th>
         <th>Variable</th>
         <th>Value</th>
         <th>Type</th>
@@ -219,6 +197,7 @@ def dashboard():
         html += f"""
         <tr>
             <td>{r.id}</td>
+            <td>{r.session}</td>
             <td>{r.variable_name}</td>
             <td>{r.variable_value}</td>
             <td>{r.variable_type}</td>
@@ -236,3 +215,17 @@ def dashboard():
     """
 
     return HTMLResponse(content=html)
+
+
+# -------------------------
+# FRONTEND
+# -------------------------
+
+_INDEX_PATH = os.path.join(os.path.dirname(__file__), "static", "index.html")
+
+
+@app.get("/", response_class=HTMLResponse)
+def home():
+    """Serve the PyChronicle frontend."""
+    with open(_INDEX_PATH, "r", encoding="utf-8") as f:
+        return f.read()
