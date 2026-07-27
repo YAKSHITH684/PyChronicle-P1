@@ -1,11 +1,6 @@
-"""
-PyChronicle Tracer Package
-"""
-
-from .execution_tracer import ExecutionTracer
-from .delta_tracker import DeltaTracker
+from .execution_tracer import ExecutionTracer, __pychronicle_trace__
 
 __all__ = [
     "ExecutionTracer",
-    "DeltaTracker",
+    "__pychronicle_trace__",
 ]

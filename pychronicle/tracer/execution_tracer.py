@@ -2,79 +2,75 @@
 execution_tracer.py
 
 Execution tracer for PyChronicle.
+Compatible with the current FastAPI + executor architecture.
 """
 
-import inspect
-
 from pychronicle.storage.database import TraceDatabase
-from pychronicle.tracer.delta_tracker import DeltaTracker
 
 
 class ExecutionTracer:
     """
-    Records variable execution history.
+    Handles execution tracing and stores variable assignments
+    in the TraceDatabase.
     """
 
-    def __init__(self, db_path="pychronicle.db"):
-        self.database = TraceDatabase(db_path)
-        self.delta = DeltaTracker()
+    def __init__(self, database=None):
+        if database is None:
+            self.database = TraceDatabase()
+        else:
+            self.database = database
 
-    def trace(
-        self,
-        variable_name,
-        value,
-        line_number,
-        scope="global"
-    ):
+        self.session = None
+
+    def start_session(self, source_path=""):
         """
-        Trace a variable assignment.
+        Create a new tracing session.
+        """
+        self.session = self.database.create_session(source_path)
+
+    def trace(self, variable_name, value, line_number, scope="global"):
+        """
+        Record one variable assignment.
         """
 
-        self.delta.update(variable_name, value)
+        if self.session is None:
+            self.start_session()
 
-        self.database.insert_variable(
-            variable_name=variable_name,
-            variable_value=value,
-            line_number=line_number,
+        self.database.add_trace(
+            session=self.session,
+            name=variable_name,
+            value=value,
+            lineno=line_number,
             scope=scope,
         )
 
-        print(
-            f"[TRACE] {variable_name} = {value} (Line {line_number})"
-        )
-
-    def trace_locals(self):
-        """
-        Trace all local variables from the caller frame.
-        """
-
-        frame = inspect.currentframe().f_back
-
-        line = frame.f_lineno
-        scope = frame.f_code.co_name
-
-        for name, value in frame.f_locals.items():
-            self.trace(
-                name,
-                value,
-                line,
-                scope,
-            )
-
     def history(self):
-        return self.database.get_history()
+        """
+        Return all recorded traces.
+        """
+        return self.database.get_history(session=self.session)
 
-    def delta_history(self):
-        return self.delta.get_history()
+    def sessions(self):
+        return self.database.get_sessions()
+
+    def variables(self):
+        return self.database.get_variables(session=self.session)
 
     def clear(self):
-        self.database.clear()
-        self.delta.clear()
+        """
+        Clear all stored traces.
+        """
+        if hasattr(self.database, "rows"):
+            self.database.rows.clear()
 
     def close(self):
-        self.database.close()
+        """
+        Compatibility method.
+        """
+        pass
 
 
+# Global tracer instance used by rewritten AST
 _global_tracer = ExecutionTracer()
 
 
@@ -85,14 +81,14 @@ def __pychronicle_trace__(
     scope="global",
 ):
     """
-    Called by rewritten AST.
+    Function inserted into rewritten code by the AST rewriter.
     """
 
     _global_tracer.trace(
-        variable_name,
-        value,
-        line_number,
-        scope,
+        variable_name=variable_name,
+        value=value,
+        line_number=line_number,
+        scope=scope,
     )
 
 
@@ -100,18 +96,13 @@ if __name__ == "__main__":
 
     tracer = ExecutionTracer()
 
-    x = 10
-    tracer.trace("x", x, 1)
+    tracer.start_session("sample.py")
 
-    x = 20
-    tracer.trace("x", x, 2)
+    tracer.trace("x", 10, 1)
+    tracer.trace("x", 20, 2)
+    tracer.trace("y", 50, 3)
 
-    y = 50
-    tracer.trace("y", y, 3)
-
-    print("\nHistory\n")
+    print("\nExecution History\n")
 
     for row in tracer.history():
         print(row)
-
-    tracer.close()
