@@ -5,6 +5,10 @@ Reads a target Python file, parses its Abstract Syntax Tree, and
 identifies every variable assignment in it: simple assignments,
 annotated assignments, augmented assignments (+=, -=, ...), and
 tuple/list unpacking.
+
+This module is purely static analysis: it never executes the target
+file. Runtime value recording is handled by
+pychronicle.tracer.execution_tracer + pychronicle.ast_engine.executor.
 """
 
 import ast

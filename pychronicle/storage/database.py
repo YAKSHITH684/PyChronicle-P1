@@ -22,8 +22,8 @@ class TraceRecord:
     """
     A single recorded variable assignment.
 
-    `variable_value` holds a human-readable repr() of the value (used by
-    the legacy /api/history and /dashboard views). `serialized_value`
+    variable_value holds a human-readable repr() of the value (used by
+    the legacy /api/history and /dashboard views). serialized_value
     holds a JSON-encoded version of the value, which is what the
     frontend's timeline/snapshots/variables views consume.
     """
