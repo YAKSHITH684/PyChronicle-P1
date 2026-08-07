@@ -13,3 +13,7 @@ dependencies = [
 
 [project.scripts]
 pychronicle = "pychronicle.cli:app"
+
+[tool.setuptools.packages.find]
+include = ["pychronicle*"]
+exclude = ["Sample_scripts*"]
