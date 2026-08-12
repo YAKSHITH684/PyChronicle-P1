@@ -178,3 +178,5 @@ class ExecutionTracer:
                     frame.f_lineno,
                     self._scope_name(frame),
                 )
+
+# Tracing deliberately filters interpreter bookkeeping names from user state.
