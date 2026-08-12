@@ -182,3 +182,5 @@ async def get_dashboard(session: Optional[str] = None):
         ),
     }
 
+
+# API routes intentionally remain frontend-agnostic so the dashboard can be deployed separately.
