@@ -67,3 +67,4 @@ def version():
 
 if __name__ == "__main__":
     app()
+# CLI entry points reuse the same tracing engine as the web API.
