@@ -188,3 +188,5 @@ if __name__ == "__main__":
             f"{assignment.value_expr}"
             f"{annotation}"
         )
+
+# Public parser API: static analysis stays independent from runtime tracing.
