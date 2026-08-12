@@ -222,3 +222,5 @@ class TraceDatabase:
                 seen_set.add(name)
                 seen.append(name)
         return seen
+
+# SQLite persistence keeps timeline data local and easy to inspect during development.
