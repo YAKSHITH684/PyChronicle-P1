@@ -92,3 +92,5 @@ def run_and_trace(path: str, db) -> Dict[str, Any]:
         "variables": db.get_variables(session=session),
         "error": error,
     }
+
+# Execution boundary: only this module launches the target script.
