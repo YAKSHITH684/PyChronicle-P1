@@ -15,4 +15,4 @@ tax_rate: float = 0.08
 tax = subtotal * tax_rate
 grand_total = subtotal + tax
 
-print(f"Total: {grand_total:.2f}")
+print(f"Total: {grand_total:.2f}")# Demo 1: basic scalar assignments used for timeline exploration.
